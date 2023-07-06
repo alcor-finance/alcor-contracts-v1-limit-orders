@@ -49,7 +49,7 @@ export default {
       ],
     },
     sepolia: {
-      url: `https://sepolia.infura.io/v3/c88c76e50fcd479b9aad21255ece74d9`,
+      url: ``,
       accounts: [
         `${process.env.PRIVATE_KEY_1}`,
         `${process.env.PRIVATE_KEY_2}`,
@@ -57,7 +57,7 @@ export default {
       ],
     },
     goerli: {
-      url: `https://goerli.infura.io/v3/c88c76e50fcd479b9aad21255ece74d9`,
+      url: ``,
       accounts: [
         `${process.env.PRIVATE_KEY_1}`,
         `${process.env.PRIVATE_KEY_2}`,
