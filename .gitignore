@@ -1,0 +1,11 @@
+artifacts/
+cache/
+crytic-export/
+node_modules/
+typechain/
+.env
+.vscode/
+.DS_Store
+package-lock.json
+yarn-error.log
+yarn.lock

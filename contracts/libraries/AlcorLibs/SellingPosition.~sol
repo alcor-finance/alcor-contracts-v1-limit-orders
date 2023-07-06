@@ -1,0 +1,103 @@
+// SPDX-License-Identifier: None
+pragma solidity >=0.5.0 <0.8.0;
+
+import "../FullMath.sol";
+
+// import "../FixedPoint128.sol";
+// import "../LiquidityMath.sol";
+
+import "hardhat/console.sol";
+
+/// @title SellingPosition
+/// @notice
+/// @dev
+library SellingPosition {
+    using FullMath for uint256;
+
+    // info stored for each user's position
+    struct Info {
+        // uint256 sellingPositionId;
+        address owner;
+        // int128 tick;
+        // contracts amount that can be sold
+        uint256 initial_total_contracts_amount;
+        uint256 initial_total_collateral;
+        uint256 multiplier;
+        // the contracts amount that is sold
+        uint256 locked_contracts_amount;
+        uint256 locked_collateral;
+        bool isFulfilled;
+        // the premium that seller received and can claim
+        uint256 premium;
+        bool isLiquidated;
+    }
+
+    /// @notice Returns the Info struct of a position
+    function get(
+        mapping(bytes32 => Info) storage self,
+        // address owner,
+        // int24 tick,
+        bytes32 hashedSig
+    ) internal view returns (SellingPosition.Info storage position) {
+        position = self[hashedSig];
+    }
+
+    function getRealTotalContractsAmount(
+        Info memory self
+    ) internal view returns (uint256) {
+        return
+            self.initial_total_contracts_amount.mulDiv(
+                self.multiplier,
+                1 ether
+            );
+    }
+
+    function liquidate(Info storage self) internal {
+        // self.locked_contracts_amount = self.initial_total_contracts_amount;
+        // self.locked_collateral = self.initial_total_collateral;
+        self.isFulfilled = true;
+        self.isLiquidated = true;
+    }
+
+    // function that is needed for partial selling position fulfillment
+    function fulfill(
+        Info storage self,
+        uint256 contractsDelta,
+        uint256 contractPrice
+    ) internal returns (uint256 premium, uint256 collateralDelta) {
+        // Info memory _self = self;
+
+        uint256 real_total_contracts_amount = self
+            .initial_total_contracts_amount
+            .mulDiv(self.multiplier, 1 ether);
+
+        require(
+            contractsDelta <=
+                self.initial_total_contracts_amount -
+                    self.locked_contracts_amount,
+            "SellingPosition: Position has not enough contracts to sell"
+        );
+
+        collateralDelta = contractsDelta.mulDiv(
+            self.initial_total_collateral,
+            self.initial_total_contracts_amount
+        );
+
+        // first, we update the flag. It's necessary to do it before updating the locked contracts amount and collateral
+        if (
+            contractsDelta ==
+            (real_total_contracts_amount - self.locked_contracts_amount)
+        ) {
+            self.isFulfilled = true;
+        }
+
+        // update both locked contracts amount and locked collateral
+        self.locked_contracts_amount += contractsDelta;
+        self.locked_collateral += collateralDelta;
+
+        // update premium
+        self.premium += contractPrice.mulDiv(contractsDelta, 1 ether);
+
+        premium = self.premium;
+    }
+}

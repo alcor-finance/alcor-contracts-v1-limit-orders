@@ -1,0 +1,26 @@
+export const mumbaiUSDC = '0xae6EBB84208C45D09c7ADB82e7e3684243D85344'
+export const mumbaiWETH = '0x18c5cE536d79b05cdBDBcBE1BE52E357bFd7905c'
+export const mumbai_uniswapV3Pool = '0x5D986834d60CD5516545E2E5AFEa3d403aa0008e'
+
+export const mumbaiUSDC2 = "0x15a882b29926Bb7e2e4d13867719c9347507fEdF"
+export const mumbaiWETH2 = "0xe53390AE687342258A4d25953Edb3E6c0D07BF2d"
+
+export const mumbaiFactoryAddr = "0xF13Bb64c1918B18e764a041754ebd0A6243aB5c9" // "0x004dDC3dbd6e56EB69Bf8F72913986c5c052990F" // "0x2a97278821a4Ff24F3D66AcBDDeAf55d98710616"
+
+
+// mainnet
+export const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+export const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+export const uniswapV3Pool = '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640'
+export const nonfungiblePositionManager = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
+
+
+
+// sepolia
+export const sepoliaUSDC = '0x0093b39c238A0f10915C3F021Ac2A0FA4901003A'
+export const sepoliaWETH = '0xc9a9f84B8F97E825f8DFC636aa013c74FEA378Bf'
+
+// goerli
+export const goerliUSDC = '0xF4A30A1B6d7FEF70e12f9dd8f61bfDa850E5De44'
+export const goerliWETH = '0x5B8E53228Cec979022fC5eefBBa76A1149C806E6'
+export const goerli_uniswapV3Pool = '0x520d48dAb5164Bae8677b06E984016d7B09f7124'
