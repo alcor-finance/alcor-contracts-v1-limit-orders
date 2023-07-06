@@ -123,57 +123,7 @@ contract AlcorPoolCallOption is ReentrancyGuard {
         }
     }
 
-    // function deposit(address token, uint256 amount) public nonReentrant {
-    //     // must be token0 or token1
-    //     require(
-    //         token == optionMainInfo.token0 || token == optionMainInfo.token1,
-    //         "Invalid token"
-    //     );
-    //     require(amount > 0, "Amount must be greater than 0");
-
-    //     // @dev TODO: safe transfer from
-    //     TransferHelper.safeTransferFrom(
-    //         token,
-    //         msg.sender,
-    //         address(this),
-    //         amount
-    //     );
-
-    //     if (token == optionMainInfo.token0) {
-    //         usersInfo[msg.sender].token0_totalDeposits += amount;
-    //     } else if (token == optionMainInfo.token1) {
-    //         usersInfo[msg.sender].token1_totalDeposits += amount;
-    //     }
-    // }
-
-    // function withdraw(address token, uint256 amount) public nonReentrant {
-    //     // must be token0 or token1
-    //     require(
-    //         token == optionMainInfo.token0 || token == optionMainInfo.token1,
-    //         "Invalid token"
-    //     );
-    //     require(amount > 0, "Amount must be greater than 0");
-
-    //     if (token == optionMainInfo.token0) {
-    //         require(
-    //             usersInfo[msg.sender].token0_totalDeposits >= amount,
-    //             "Not enough available funds"
-    //         );
-    //         // TODO: safe transfer from
-    //         usersInfo[msg.sender].token0_totalDeposits -= amount;
-    //     } else if (token == optionMainInfo.token1) {
-    //         require(
-    //             usersInfo[msg.sender].token1_totalDeposits -
-    //                 usersInfo[msg.sender].token1_lockedAmount >=
-    //                 amount,
-    //             "Not enough available funds"
-    //         );
-    //         // TODO: safe transfer from
-    //         usersInfo[msg.sender].token1_totalDeposits -= amount;
-    //     }
-    // }
-
-    // when option is expired, users can claim their funds: collaterals, payouts, unused funds
+    // when option is expired, users can claim their funds: collaterals, payouts
     function claim(address token, uint256 amount) public nonReentrant {
         require(optionMainInfo.isExpired, "option is not expired");
         // must be token0 or token1
