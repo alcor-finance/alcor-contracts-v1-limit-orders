@@ -14,10 +14,10 @@ Currently the code has no license (SPDX License: None).
 
 #### Alcor Factory:
 ```
-0xF13Bb64c1918B18e764a041754ebd0A6243aB5c9
+0x9b781BfACEfCF562b125D35651B7F3F4EeDC29d0
 ```
 
-https://mumbai.polygonscan.com/address/0xF13Bb64c1918B18e764a041754ebd0A6243aB5c9
+https://mumbai.polygonscan.com/address/0x9b781BfACEfCF562b125D35651B7F3F4EeDC29d0
 
 <br>
 
