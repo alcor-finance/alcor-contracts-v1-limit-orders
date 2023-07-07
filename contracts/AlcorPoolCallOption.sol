@@ -14,6 +14,7 @@ import "./libraries/AlcorLibs/TickLibrary.sol";
 
 import "./interfaces/IUniswapV3Pool.sol";
 import "./interfaces/IUniswapV3Factory.sol";
+import "./interfaces/ISwapRouter.sol";
 import "./interfaces/IAlcorPoolDeployer.sol";
 import "./interfaces/IAlcorFactory.sol";
 
@@ -51,12 +52,15 @@ contract AlcorPoolCallOption is ReentrancyGuard {
         int24 tickSpacing;
         // uint24 protocolFee;
         bool isExpired;
-        uint256 payoff_token1;
+        uint256 payoff_token0;
         uint256 openInterest;
+        uint256 priceAtExpiry;
     }
 
     address public constant UNISWAP_V3_FACTORY =
         0x1F98431c8aD98523631AE4a59f267346ea31F984;
+    address public constant ISWAP_ROUTER =
+        0xE592427A0AEce92De3Edee1F18E0157C05861564;
     uint24 public constant UNISWAP_POOL_FEE = 500;
 
     OptionInfo public optionMainInfo;
@@ -124,46 +128,52 @@ contract AlcorPoolCallOption is ReentrancyGuard {
     }
 
     // when option is expired, users can claim their funds: collaterals, payouts
-    function claim(address token, uint256 amount) public nonReentrant {
-        require(optionMainInfo.isExpired, "option is not expired");
-        // must be token0 or token1
-        require(
-            token == optionMainInfo.token0 || token == optionMainInfo.token1,
-            "Invalid token"
-        );
-        require(amount > 0, "Amount must be greater than 0");
+    // function claim(address token, uint256 amount) public nonReentrant {}
 
-        if (token == optionMainInfo.token0) {
-            require(
-                usersInfo[msg.sender].token0_totalDeposits >= amount,
-                "Not enough available funds"
+    function getPayout() public nonReentrant {
+        require(optionMainInfo.isExpired, "option is not expired");
+        require(
+            usersInfo[msg.sender].soldContractsAmount < 0,
+            "this method is only for buyes"
+        );
+        if (optionMainInfo.payoff_token0 > 0) {
+            usersInfo[msg.sender].soldContractsAmount = 0;
+            uint256 amount = uint256(usersInfo[msg.sender].soldContractsAmount)
+                .mul(optionMainInfo.payoff_token0);
+            TransferHelper.safeTransfer(
+                optionMainInfo.token0,
+                msg.sender,
+                amount
             );
-            usersInfo[msg.sender].token0_totalDeposits -= amount;
-            // safe transfer tokens
-            TransferHelper.safeTransfer(token, msg.sender, amount);
-        } else if (token == optionMainInfo.token1) {
-            if (optionMainInfo.payoff_token1 > 0) {
-                // TODO; total deposit - locked * payoff_token1 ?
-                // safe transfer tokens
-            }
-            require(
-                usersInfo[msg.sender].token1_totalDeposits -
-                    usersInfo[msg.sender].token1_lockedAmount >=
-                    amount,
-                "Not enough available funds"
-            );
-            usersInfo[msg.sender].token1_totalDeposits -= amount;
-            // safe transfer tokens
-            TransferHelper.safeTransfer(token, msg.sender, amount);
         }
     }
 
-    // function lockFunds(address token, address user, uint amount) public {
-    //     // must be token0 or token1
-    //     require(token == token0 || token == token1, "Invalid token");
-
-    //     // lockedFunds[keccak256(abi.encodePacked(token, user))] += amount;
-    // }
+    function withdrawCollateral() public nonReentrant {
+        require(optionMainInfo.isExpired, "option is not expired");
+        require(
+            usersInfo[msg.sender].soldContractsAmount > 0,
+            "this method is only for sellers"
+        );
+        if (optionMainInfo.payoff_token0 < 0) {
+            usersInfo[msg.sender].soldContractsAmount = 0;
+            uint256 amount = uint256(usersInfo[msg.sender].soldContractsAmount)
+                .mul(optionMainInfo.priceAtExpiry);
+            TransferHelper.safeTransfer(
+                optionMainInfo.token0,
+                msg.sender,
+                amount
+            );
+        } else {
+            usersInfo[msg.sender].soldContractsAmount = 0;
+            uint256 amount = uint256(usersInfo[msg.sender].soldContractsAmount)
+                .mul(optionMainInfo.strikePrice);
+            TransferHelper.safeTransfer(
+                optionMainInfo.token0,
+                msg.sender,
+                amount
+            );
+        }
+    }
 
     function ToExpiredState() public {
         require(block.timestamp >= optionMainInfo.expiration, "too early");
@@ -174,33 +184,41 @@ contract AlcorPoolCallOption is ReentrancyGuard {
             optionMainInfo.token1,
             UNISWAP_POOL_FEE
         );
+        ISwapRouter router = ISwapRouter(ISWAP_ROUTER);
 
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(uniswap_pool)
-            .slot0();
+        address tokenIn = optionMainInfo.token1;
+        address tokenOut = optionMainInfo.token0;
+
+        uint256 tokenIn_balance = IERC20(tokenIn).balanceOf(address(this));
+        // aprove tokenIn
+        IERC20(optionMainInfo.token1).approve(address(router), tokenIn_balance);
+
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+            .ExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                fee: UNISWAP_POOL_FEE,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: tokenIn_balance,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+
+        // execute swap
+        router.exactInputSingle(params);
+
+        (, int24 tick, , , , , ) = IUniswapV3Pool(uniswap_pool).slot0();
+        optionMainInfo.priceAtExpiry = tick.getPriceAtTick();
 
         // out of the money call option
-        if (sqrtPriceX96 <= optionMainInfo.strikePrice) {
-            optionMainInfo.payoff_token1 = 0;
+        if (optionMainInfo.priceAtExpiry <= optionMainInfo.strikePrice) {
+            optionMainInfo.payoff_token0 = 0;
         }
         // in the money call option
         else {
-            uint256 S = uint256(sqrtPriceX96).mulDiv(
-                uint256(sqrtPriceX96),
-                1 << 96
-            );
-            uint256 K = uint256(optionMainInfo.strikePrice).mulDiv(
-                uint256(optionMainInfo.strikePrice),
-                1 << 96
-            );
-
-            optionMainInfo.payoff_token1 = (S - K).mulDiv(1 << 96, S);
-
-            // optionMainInfo.payoff_token1 = (
-            //     uint256(sqrtPrice - optionMainInfo.strikePrice)
-            // ).mulDiv(
-            //         (uint256(sqrtPrice + optionMainInfo.strikePrice)),
-            //         1 << 96
-            //     );
+            optionMainInfo.payoff_token0 = (optionMainInfo.priceAtExpiry -
+                uint256(optionMainInfo.strikePrice));
         }
     }
 
@@ -336,14 +354,13 @@ contract AlcorPoolCallOption is ReentrancyGuard {
             // add protocol fee
             step.step_cost_token0 += step.step_cost_token0.mulDiv(
                 protocolFee,
-                10000
+                1e6
             );
-
             swapState.cost_token0 += step.step_cost_token0;
 
-            token0_unclaimedProtocolFees += swapState.cost_token0.mulDiv(
+            token0_unclaimedProtocolFees = swapState.cost_token0.mulDiv(
                 protocolFee,
-                10000
+                1e6
             );
 
             console.log("step.step_cost_token0:");
@@ -478,7 +495,13 @@ contract AlcorPoolCallOption is ReentrancyGuard {
             // add protocol fee
             step.step_cost_token0 += step.step_cost_token0.mulDiv(
                 protocolFee,
-                10000
+                1e6
+            );
+            swapState.cost_token0 += step.step_cost_token0;
+
+            token0_unclaimedProtocolFees = swapState.cost_token0.mulDiv(
+                protocolFee,
+                1e6
             );
 
             // decrease buyer's token0 total deposits as he buys option
@@ -486,13 +509,6 @@ contract AlcorPoolCallOption is ReentrancyGuard {
             //     step.signer,
             //     step.step_cost_token0
             // );
-
-            swapState.cost_token0 += step.step_cost_token0;
-
-            token0_unclaimedProtocolFees += swapState.cost_token0.mulDiv(
-                protocolFee,
-                10000
-            );
 
             console.log("step.step_cost_token0: ", step.step_cost_token0);
             // TransferHelper.safeTransfer(
