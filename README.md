@@ -6,13 +6,13 @@ All the contracts are currently under active development.
 
 Currently the code has no license (SPDX License: None).
 
+<!---
 
 ## The contracts are deployed to:
 
 ### Polygon testnet (Mumbai)
 <br>
 
-<!---
 #### Alcor Factory:
 ```
 0x9b781BfACEfCF562b125D35651B7F3F4EeDC29d0
